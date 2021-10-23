@@ -21,6 +21,9 @@ func asyncClientBidirectionalRPC(streamProcOrder pb.OrderManagement_ProcessOrder
 		if errProcOrder == io.EOF {
 			break
 		}
+		if errProcOrder != nil {
+			log.Fatalf("error is ", errProcOrder)
+		}
 		log.Printf("Id", combinedShipment.Id)
 		log.Printf("Status", combinedShipment.Status)
 		log.Printf("Order list ", combinedShipment.OrderList)
@@ -40,17 +43,16 @@ func main() {
 	defer cancel()
 
 	// search example as below
-	//searchStream, _ := c.GetOrders(ctx, &wrappers.StringValue{Value: "Google"})
-	//
-	//for {
-	//	searchOrder, err := searchStream.Recv()
-	//	if err == io.EOF {
-	//		break
-	//	}
-	//
-	//	log.Printf("Search Result: ", searchOrder)
-	//}
-	//
+	searchStream, _ := c.GetOrders(ctx, &wrappers.StringValue{Value: "Google"})
+
+	for {
+		searchOrder, err := searchStream.Recv()
+		if err == io.EOF {
+			break
+		}
+
+		log.Printf("Search Result: ", searchOrder)
+	}
 
 	// update example as below
 	//// start an update example as below
@@ -83,30 +85,30 @@ func main() {
 	//log.Printf("Update Orders Res : %s", updateRes)
 
 	// process order example as below
-	streamProcOrder, _ := c.ProcessOrders(ctx)
-	if err := streamProcOrder.Send(&wrappers.StringValue{Value: "102"}); err != nil {
-		log.Fatalf("%v.Send(%v) = %v", c, "102", err)
-	}
-
-	if err := streamProcOrder.Send(&wrappers.StringValue{Value: "103"}); err != nil {
-		log.Fatalf("%v.Send(%v) = %v", c, "103", err)
-	}
-
-	if err := streamProcOrder.Send(&wrappers.StringValue{Value: "104"}); err != nil {
-		log.Fatalf("%v.Send(%v) = %v", c, "104", err)
-	}
-
-	channel := make(chan struct{})
-	go asyncClientBidirectionalRPC(streamProcOrder, channel)
-	time.Sleep(time.Millisecond * 1000)
-
-	if err := streamProcOrder.Send(&wrappers.StringValue{Value: "101"}); err != nil {
-		log.Fatalf("%v.Send(%v) = %v", c, "101", err)
-	}
-
-	if err := streamProcOrder.CloseSend(); err != nil {
-		log.Fatal(err)
-	}
-
-	<-channel
+	//streamProcOrder, _ := c.ProcessOrders(ctx)
+	//if err := streamProcOrder.Send(&wrappers.StringValue{Value: "102"}); err != nil {
+	//	log.Fatalf("%v.Send(%v) = %v", c, "102", err)
+	//}
+	//
+	//if err := streamProcOrder.Send(&wrappers.StringValue{Value: "103"}); err != nil {
+	//	log.Fatalf("%v.Send(%v) = %v", c, "103", err)
+	//}
+	//
+	//if err := streamProcOrder.Send(&wrappers.StringValue{Value: "104"}); err != nil {
+	//	log.Fatalf("%v.Send(%v) = %v", c, "104", err)
+	//}
+	//
+	//channel := make(chan struct{})
+	//go asyncClientBidirectionalRPC(streamProcOrder, channel)
+	//time.Sleep(time.Millisecond * 1000)
+	//
+	//if err := streamProcOrder.Send(&wrappers.StringValue{Value: "101"}); err != nil {
+	//	log.Fatalf("%v.Send(%v) = %v", c, "101", err)
+	//}
+	//
+	//if err := streamProcOrder.CloseSend(); err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//<-channel
 }
