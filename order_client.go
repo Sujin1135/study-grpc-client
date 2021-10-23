@@ -32,7 +32,7 @@ func asyncClientBidirectionalRPC(streamProcOrder pb.OrderManagement_ProcessOrder
 }
 
 func main() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithStreamInterceptor(clientStreamInterceptor))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
