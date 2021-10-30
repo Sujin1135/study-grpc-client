@@ -10,25 +10,24 @@ import (
 	"time"
 )
 
-func main() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	orderManagementClient := pb.NewOrderManagementClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	order1 := pb.Order{
+func MakeOrderParams() pb.Order {
+	order := pb.Order{
 		Id:          "101",
 		Items:       []string{"Iphone XS", "Mac Book Pro"},
 		Destination: "San Jose, CA",
 		Price:       2300.00,
 		Description: "test ",
 	}
-	res, addErr := orderManagementClient.AddOrder(ctx, &order1)
+	return order
+}
+
+func AddOrder(conn *grpc.ClientConn, params pb.Order) {
+	orderManagementClient := pb.NewOrderManagementClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+
+	defer cancel()
+
+	res, addErr := orderManagementClient.AddOrder(ctx, &params)
 
 	if addErr != nil {
 		got := status.Code(addErr)
@@ -36,18 +35,24 @@ func main() {
 	} else {
 		log.Printf("AddOrder Response -> %v", res.Value)
 	}
+}
 
-	ecommerceManagementClient := ecpb.NewProductInfoClient(conn)
-	ecCtx, ecCancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer ecCancel()
-
+func MakeProductParams() ecpb.Product {
 	ecommerce1 := ecpb.Product{
 		Id:          "101",
 		Name:        "Aborcado",
 		Description: "Oil tasted good",
 		Price:       2.0,
 	}
-	ecRes, ecAddErr := ecommerceManagementClient.AddProduct(ecCtx, &ecommerce1)
+	return ecommerce1
+}
+
+func AddProduct(conn *grpc.ClientConn, params ecpb.Product) {
+	ecommerceManagementClient := ecpb.NewProductInfoClient(conn)
+	ecCtx, ecCancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer ecCancel()
+
+	ecRes, ecAddErr := ecommerceManagementClient.AddProduct(ecCtx, &params)
 
 	if ecAddErr != nil {
 		got := status.Code(ecAddErr)
@@ -55,4 +60,15 @@ func main() {
 	} else {
 		log.Printf("AddProduct Response -> %v", ecRes.Value)
 	}
+}
+
+func main() {
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	AddOrder(conn, MakeOrderParams())
+	AddProduct(conn, MakeProductParams())
 }
