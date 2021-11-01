@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"google.golang.org/grpc"
+	echopb "google.golang.org/grpc/examples/features/proto/echo"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"log"
@@ -119,14 +121,57 @@ func UpdateOrder(conn *grpc.ClientConn, params []pb.Order) {
 	log.Printf("stream trailer is %v", trailer)
 }
 
+func callUnaryEcho(c echopb.EchoClient, message string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	r, err := c.UnaryEcho(ctx, &echopb.EchoRequest{Message: message})
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
+	fmt.Println(r.Message)
+}
+
+// TODO: round robin case
+func makeRPCs(cc *grpc.ClientConn, n int) {
+	hwc := echopb.NewEchoClient(cc)
+	for i := 0; i < n; i++ {
+		callUnaryEcho(hwc, "this is examples/load_balancing")
+	}
+}
+
 func main() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
+		grpc.WithBalancerName("pick_first"),
+		grpc.WithInsecure(),
+	)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
 
+	log.Println("==== Calling AddProduct/UpdateOrder with pick_first ====")
+
+	makeRPCs(conn, 10)
+
+	// TODO: round robin
+	// round_robin 정책으로 다른 ClientConn을 만든다.
+	roundrobinConn, err := grpc.Dial(
+		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
+		// "example:///lb.example.grpc.io"
+		grpc.WithBalancerName("round_robin"),
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer roundrobinConn.Close()
+
+	log.Println("==== Calling helloworld.Greeter/SayHello " +
+		"with round_robin ====")
+	makeRPCs(roundrobinConn, 10)
+
 	// AddOrder(conn, MakeOrderParams())
-	AddProduct(conn, MakeProductParams())
-	UpdateOrder(conn, MakeUpdateOrderParams())
+	//AddProduct(conn, MakeProductParams())
+	//UpdateOrder(conn, MakeUpdateOrderParams())
 }
