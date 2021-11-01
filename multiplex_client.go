@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"log"
 	ecpb "study-grpc-client/ecommerce/product"
@@ -22,12 +23,14 @@ func MakeOrderParams() pb.Order {
 }
 
 func AddOrder(conn *grpc.ClientConn, params pb.Order) {
+	md := metadata.Pairs(
+		"timestamp", time.Now().Format(time.StampNano),
+		"kn", "vn",
+	)
+	mdCtx := metadata.NewOutgoingContext(context.Background(), md)
+	ctxA := metadata.AppendToOutgoingContext(mdCtx, "k1", "v1", "k1", "v2", "k2", "v3")
 	orderManagementClient := pb.NewOrderManagementClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-
-	defer cancel()
-
-	res, addErr := orderManagementClient.AddOrder(ctx, &params)
+	res, addErr := orderManagementClient.AddOrder(ctxA, &params)
 
 	if addErr != nil {
 		got := status.Code(addErr)
@@ -52,7 +55,16 @@ func AddProduct(conn *grpc.ClientConn, params ecpb.Product) {
 	ecCtx, ecCancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer ecCancel()
 
-	ecRes, ecAddErr := ecommerceManagementClient.AddProduct(ecCtx, &params)
+	var header, trailer metadata.MD
+	ecRes, ecAddErr := ecommerceManagementClient.AddProduct(
+		ecCtx,
+		&params,
+		grpc.Header(&header),
+		grpc.Trailer(&trailer),
+	)
+
+	log.Printf("header is %v", header)
+	log.Printf("trailer is %v", trailer)
 
 	if ecAddErr != nil {
 		got := status.Code(ecAddErr)
@@ -62,6 +74,51 @@ func AddProduct(conn *grpc.ClientConn, params ecpb.Product) {
 	}
 }
 
+func MakeUpdateOrderParams() []pb.Order {
+	orders := []pb.Order{
+		pb.Order{Id: "102", Items: []string{"Google Pixel 3A", "Google Pixel Book"}, Destination: "Mountain View, CA", Price: 1100.00},
+		pb.Order{Id: "103", Items: []string{"Apple Watch S4", "Mac Book Pro", "iPad Pro"}, Destination: "San Jose, CA", Price: 2800.00},
+	}
+	return orders
+}
+
+func UpdateOrder(conn *grpc.ClientConn, params []pb.Order) {
+	c := pb.NewOrderManagementClient(conn)
+	md := metadata.Pairs(
+		"timestamp", time.Now().Format(time.StampNano),
+	)
+	mdCtx := metadata.NewOutgoingContext(context.Background(), md)
+	ctxA := metadata.AppendToOutgoingContext(mdCtx, "k1", "v1", "k1", "v2", "k2", "v3")
+	stream, err := c.UpdateOrders(ctxA)
+
+	if err != nil {
+		log.Fatalf("%v.UpdateOrders(_) = _, %v", c, err)
+	}
+
+	for _, value := range params {
+		if err := stream.Send(&value); err != nil {
+			log.Fatalf("%v.Send(%v) = %v", stream, value, err)
+		}
+	}
+
+	updateRes, err := stream.CloseAndRecv()
+	if err != nil {
+		errorCode := status.Code(err)
+		log.Printf("Invalid Argument Error : %s", errorCode)
+		errorStatus := status.Convert(err)
+
+		log.Printf("Error status : %s", errorStatus)
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+	}
+	log.Printf("Update Orders Res : %s", updateRes)
+
+	header, err := stream.Header()
+	trailer := stream.Trailer()
+
+	log.Printf("stream header is %v", header)
+	log.Printf("stream trailer is %v", trailer)
+}
+
 func main() {
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
@@ -69,6 +126,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	AddOrder(conn, MakeOrderParams())
+	// AddOrder(conn, MakeOrderParams())
 	AddProduct(conn, MakeProductParams())
+	UpdateOrder(conn, MakeUpdateOrderParams())
 }
