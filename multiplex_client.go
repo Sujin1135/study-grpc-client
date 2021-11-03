@@ -139,39 +139,39 @@ func makeRPCs(cc *grpc.ClientConn, n int) {
 	}
 }
 
-func main() {
-	conn, err := grpc.Dial(
-		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
-		grpc.WithBalancerName("pick_first"),
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	log.Println("==== Calling AddProduct/UpdateOrder with pick_first ====")
-
-	makeRPCs(conn, 10)
-
-	// TODO: round robin
-	// round_robin 정책으로 다른 ClientConn을 만든다.
-	roundrobinConn, err := grpc.Dial(
-		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
-		// "example:///lb.example.grpc.io"
-		grpc.WithBalancerName("round_robin"),
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer roundrobinConn.Close()
-
-	log.Println("==== Calling helloworld.Greeter/SayHello " +
-		"with round_robin ====")
-	makeRPCs(roundrobinConn, 10)
-
-	// AddOrder(conn, MakeOrderParams())
-	//AddProduct(conn, MakeProductParams())
-	//UpdateOrder(conn, MakeUpdateOrderParams())
-}
+//func main() {
+//	conn, err := grpc.Dial(
+//		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
+//		grpc.WithBalancerName("pick_first"),
+//		grpc.WithInsecure(),
+//	)
+//	if err != nil {
+//		log.Fatalf("did not connect: %v", err)
+//	}
+//	defer conn.Close()
+//
+//	log.Println("==== Calling AddProduct/UpdateOrder with pick_first ====")
+//
+//	makeRPCs(conn, 10)
+//
+//	// TODO: round robin
+//	// round_robin 정책으로 다른 ClientConn을 만든다.
+//	roundrobinConn, err := grpc.Dial(
+//		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName),
+//		// "example:///lb.example.grpc.io"
+//		grpc.WithBalancerName("round_robin"),
+//		grpc.WithInsecure(),
+//	)
+//	if err != nil {
+//		log.Fatalf("did not connect: %v", err)
+//	}
+//	defer roundrobinConn.Close()
+//
+//	log.Println("==== Calling helloworld.Greeter/SayHello " +
+//		"with round_robin ====")
+//	makeRPCs(roundrobinConn, 10)
+//
+//	// AddOrder(conn, MakeOrderParams())
+//	//AddProduct(conn, MakeProductParams())
+//	//UpdateOrder(conn, MakeUpdateOrderParams())
+//}
