@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/oauth"
 	"log"
 	pb "study-grpc-client/ecommerce/product"
 	"time"
 )
 
-var (
-	url      = "localhost:50051"
+const (
 	hostname = "localhost"
 	crtFile  = "server.crt"
 )
@@ -26,15 +27,19 @@ func GenProductParams() *pb.Product {
 }
 
 func main() {
+	auth := oauth.NewOauthAccess(fetchToken())
+
 	creds, err := credentials.NewClientTLSFromFile(crtFile, hostname)
 	if err != nil {
-		log.Fatalf("failed to load credentials: %v", err)
+		log.Fatalf("failed to load credentials: %s", err)
 	}
+
 	opts := []grpc.DialOption{
+		grpc.WithPerRPCCredentials(auth),
 		grpc.WithTransportCredentials(creds),
 	}
 
-	conn, err := grpc.Dial(url, opts...)
+	conn, err := grpc.Dial(address, opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -46,5 +51,17 @@ func main() {
 
 	product := GenProductParams()
 	log.Printf("add a product: %v", product)
-	c.AddProduct(ctx, product)
+	id, err := c.AddProduct(ctx, product)
+
+	if err != nil {
+		log.Fatalf("failed to add a product by id %s, %s", product.Id, err)
+	} else {
+		log.Printf("added id is %s", id)
+	}
+}
+
+func fetchToken() *oauth2.Token {
+	return &oauth2.Token{
+		AccessToken: "some-secret-token",
+	}
 }
